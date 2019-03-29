@@ -1,0 +1,29 @@
+{
+   "name": "klatt-syn",
+   "version": "1.0.0",
+   "description": "Klatt formant synthesizer",
+   "types": "dist/Klatt.d.ts",
+   "module": "dist/Klatt.js",
+   "keywords": [
+      "klatt",
+      "formant",
+      "speech",
+      "voice",
+      "synthesizer"
+   ],
+   "license": "MIT",
+   "homepage": "http://www.source-code.biz/klattSyn",
+   "repository": "github:chdh/klatt-syn",
+   "contributors": [
+      {
+         "name": "Christian d'Heureuse",
+         "email": "chdh@inventec.ch"
+      }
+   ],
+   "scripts": {
+      "build": "tsc"
+   },
+   "files": [
+      "dist/*"
+   ]
+}
