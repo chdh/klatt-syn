@@ -719,7 +719,7 @@ export class Generator {
 
    }
 
-// Generates a whole sound that consists of multiple frames.
+// Generates a sound that consists of multiple frames.
 export function generateSound (mParms: MainParms, fParmsA: FrameParms[]) : Float64Array {
    const generator = new Generator(mParms);
    let outBufLen = 0;
