@@ -424,7 +424,7 @@ export interface FrameParms {
    flutterLevel:                       number;                       // F0 flutter level, 0 .. 1, typically 0.25
    openPhaseRatio:                     number;                       // relative length of the open phase of the glottis, 0 .. 1, typically 0.7
    breathinessDb:                      number;                       // breathiness in voicing (turbulence) in dB, positive to amplify or negative to attenuate
-   tiltDb:                             number;                       // spectral tilt in dB. Attenuation at 3 kHz in dB. 0 = no tilt.
+   tiltDb:                             number;                       // spectral tilt for glottal source in dB. Attenuation at 3 kHz in dB. 0 = no tilt.
    gainDb:                             number;                       // overall gain (output gain) in dB, positive to amplify or negative to attenuate
    nasalFormantFreq:                   number;                       // nasal formant frequency in Hz, or NaN
    nasalFormantBw:                     number;                       // nasal formant bandwidth in Hz, or NaN

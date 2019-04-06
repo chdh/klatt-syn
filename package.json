@@ -1,6 +1,6 @@
 {
    "name": "klatt-syn",
-   "version": "1.0.0",
+   "version": "1.0.1",
    "description": "Klatt formant synthesizer",
    "types": "dist/Klatt.d.ts",
    "module": "dist/Klatt.js",
