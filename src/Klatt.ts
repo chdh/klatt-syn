@@ -13,8 +13,10 @@
 //    g = gain at frequency f
 //  Filter function:
 //    y[n] = a * x[n] + b * y[n-1]
+//  Transfer function:
+//    H(w) = a / ( 1 - b * e^(-jw) )
 //  Frequency response:
-//    |H(f)| = a / sqrt(1 - 2b * cos(w) + b^2)
+//    |H(w)| = a / sqrt(1 - 2b * cos(w) + b^2)
 //  Gain at DC:
 //    |H(0)| = a / sqrt(1 - 2b * cos(0) + b^2)
 //           = a / sqrt(1 - 2b + b^2)
@@ -78,6 +80,15 @@ class LpFilter1 {
       this.muted = true;
       this.y1 = 0; }
 
+   // Returns the polynomial coefficients of the filter transfer function in the z-plane.
+   // The returned array contains the top and bottom coefficients of the rational fraction, ordered in ascending powers.
+   public getTransferFunctionCoefficients() : number[][] {
+      if (this.passthrough) {
+         return [[1], [1]]; }
+      if (this.muted) {
+         return [[0], [1]]; }
+      return [[this.a], [1, -this.b]]; }
+
    // Performs a filter step.
    // @param x
    //    Input signal value.
@@ -109,8 +120,10 @@ class LpFilter1 {
 //    r = exp(- PI * bw / sampleRate)
 //  Filter function:
 //    y[n] = a * x[n] + b * y[n-1] + c * y[n-2]
+//  Transfer function:
+//    H(w) = a / ( 1 - b * e^(-jw) - c * e^(-2jw) )
 //  Frequency response:
-//    |H(f)| = a / ( sqrt(1 + r^2 - 2 * r * cos(w - w0)) * sqrt(1 + r^2 - 2 * r * cos(w + w0)) )
+//    |H(w)| = a / ( sqrt(1 + r^2 - 2 * r * cos(w - w0)) * sqrt(1 + r^2 - 2 * r * cos(w + w0)) )
 //  Gain at DC:
 //    |H(0)| = a / ( sqrt(1 + r^2 - 2 * r * cos(0 - w0)) * sqrt(1 + r^2 - 2 * r * cos(0 + w0)) )
 //           = a / (1 + r^2 - 2 * r * cos(w0))
@@ -177,6 +190,15 @@ class Resonator {
          throw new Error("Invalid resonator peak gain."); }
       this.a = peakGain * (1 - this.r); }
 
+   // Returns the polynomial coefficients of the filter transfer function in the z-plane.
+   // The returned array contains the top and bottom coefficients of the rational fraction, ordered in ascending powers.
+   public getTransferFunctionCoefficients() : number[][] {
+      if (this.passthrough) {
+         return [[1], [1]]; }
+      if (this.muted) {
+         return [[0], [1]]; }
+      return [[this.a], [1, -this.b, -this.c]]; }
+
    // Performs a filter step.
    // @param x
    //    Input signal value.
@@ -204,6 +226,8 @@ class Resonator {
 //    w = 2 * PI * f / sampleRate
 //  Filter function:
 //    y[n] = a * x[n] + b * x[n-1] + c * x[n-2]
+//  Transfer function:
+//    H(w) = a + b * e^(-jw) + c * e^(-2jw)
 class AntiResonator {
 
    private sampleRate:       number;
@@ -234,17 +258,17 @@ class AntiResonator {
          throw new Error("Invalid anti-resonator parameters."); }
       const r = Math.exp(- Math.PI * bw / this.sampleRate);
       const w = 2 * Math.PI * f / this.sampleRate;
-      const c = - (r * r);
-      const b = 2 * r * Math.cos(-w);
-      const a = 1 - b - c;
-      if (a == 0) {
+      const c0 = - (r * r);
+      const b0 = 2 * r * Math.cos(w);
+      const a0 = 1 - b0 - c0;
+      if (a0 == 0) {
          this.a = 0;
          this.b = 0;
          this.c = 0;
          return; }
-      this.a = 1 / a;
-      this.b = - b / a;
-      this.c = - c / a;
+      this.a = 1 / a0;
+      this.b = - b0 / a0;
+      this.c = - c0 / a0;
       this.passthrough = false;
       this.muted = false; }
 
@@ -260,6 +284,15 @@ class AntiResonator {
       this.x1 = 0;
       this.x2 = 0; }
 
+   // Returns the polynomial coefficients of the filter transfer function in the z-plane.
+   // The returned array contains the top and bottom coefficients of the rational fraction, ordered in ascending powers.
+   public getTransferFunctionCoefficients() : number[][] {
+      if (this.passthrough) {
+         return [[1], [1]]; }
+      if (this.muted) {
+         return [[0], [1]]; }
+      return [[this.a, this.b, this.c], [1]]; }
+
    // Performs a filter step.
    // @param x
    //    Input signal value.
@@ -272,6 +305,46 @@ class AntiResonator {
          return 0; }
       const y = this.a * x + this.b * this.x1 + this.c * this.x2;
       this.x2 = this.x1;
+      this.x1 = x;
+      return y; }}
+
+// A differencing filter.
+// This is a first-order FIR HP filter.
+//
+// Problem: The filter curve depends on the sample rate.
+// TODO: Compensate the effect of the sample rate.
+//
+// Formulas:
+//  Variables:
+//    x = input samples
+//    y = output samples
+//    f = frequency in Hz
+//    w = 2 * PI * f / sampleRate
+//  Filter function:
+//    y[n] = x[n] - x[n-1]
+//  Transfer function:
+//    H(w) = 1 - e^(-jw)
+//  Frequency response:
+//    |H(w)| = sqrt(2 - 2 * cos(w))
+class DifferencingFilter {
+
+   private x1:               number;                       // x[n-1], last input value
+
+   constructor() {
+      this.x1 = 0; }
+
+   // Returns the polynomial coefficients of the filter transfer function in the z-plane.
+   // The returned array contains the top and bottom coefficients of the rational fraction, ordered in ascending powers.
+   public getTransferFunctionCoefficients() : number[][] {
+      return [[1, -1], [1]]; }
+
+   // Performs a filter step.
+   // @param x
+   //    Input signal value.
+   // @returns
+   //    Output signal value.
+   public step (x: number) : number {
+      const y = x - this.x1;
       this.x1 = x;
       return y; }}
 
@@ -407,8 +480,8 @@ function dbToLin (db: number) : number {
 
 //--- Main logic ---------------------------------------------------------------
 
-export const enum GlottalSourceType { impulsive, natural }
-export const glottalSourceTypeEnumNames = ["impulsive", "natural"];
+export const enum GlottalSourceType { impulsive, natural, noise }
+export const glottalSourceTypeEnumNames = ["impulsive", "natural", "noise"];
 
 export const maxOralFormants = 6;
 
@@ -506,7 +579,7 @@ export class Generator {
    // Parallel branch variables:
    private nasalFormantPar:            Resonator;                    // nasal formant filter for parallel branch
    private oralFormantPar:             Resonator[];                  // oral formant filters for parallel branch
-   private lastParallelSource:         number;                       // last parallel source value, used for primitive high-pass filtering
+   private differencingFilterPar:      DifferencingFilter;           // differencing filter for the parallel branch
 
    constructor (mParms: MainParms) {
       this.mParms = mParms;
@@ -535,7 +608,7 @@ export class Generator {
       this.oralFormantPar = Array(maxOralFormants);
       for (let i = 0; i < maxOralFormants; i++) {
          this.oralFormantPar[i] = new Resonator(mParms.sampleRate); }
-      this.lastParallelSource = 0; }
+      this.differencingFilterPar = new DifferencingFilter(); }
 
    // Generates a frame of the sound.
    // The length of the frame is specified by `outBuf.length` and `fParms.duration` is ignored.
@@ -587,20 +660,14 @@ export class Generator {
       const currentAspirationMod = (pState.positionInPeriod >= pState.periodLength / 2) ? fParms.parallelAspirationMod : 0;
       const aspiration = this.aspirationSourcePar.getNext() * fState.parallelAspirationLin * (1 - currentAspirationMod);
       const source = parallelVoice + aspiration;
-      // Klatt (1980) states: "... using a first difference calculation to remove low-frequency energy from
-      // the higher formants; this energy would otherwise distort the spectrum in the region of F1 during
-      // the synthesis of some vowels."
-      // A differencing filter is applied for H2 to H6 and the bypass.
-      // This is a first-order FIR HP filter with the filter function:
-      //    y[n] = x[n] - x[n-1]
-      // The frequency response is:
-      //    |H(f)| = sqrt(2 - 2 * cos(w))            with: w = 2 * PI * f / sampleRate
-      // TODO: Compensate the effect of the sample rate.
-      // A better solution would probably be to use real band-pass filters instead of resonators for the formants
-      // in the parallel branch. Then this differencing filter would not be necessary to protect the low frequencies
-      // of the low formants.
-      const sourceDifference = source - this.lastParallelSource;
-      this.lastParallelSource = source;
+      const sourceDifference = this.differencingFilterPar.step(source);
+         // Klatt (1980) states: "... using a first difference calculation to remove low-frequency energy from
+         // the higher formants; this energy would otherwise distort the spectrum in the region of F1 during
+         // the synthesis of some vowels."
+         // A differencing filter is applied for H2 to H6 and the bypass.
+         // A better solution would probably be to use real band-pass filters instead of resonators for the formants
+         // in the parallel branch. Then this differencing filter would not be necessary to protect the low frequencies
+         // of the low formants.
       const currentFricationMod = (pState.positionInPeriod >= pState.periodLength / 2) ? fParms.fricationMod : 0;
       const fricationNoise = this.fricationSourcePar.getNext() * fState.fricationLin * (1 - currentFricationMod);
       const source2 = sourceDifference + fricationNoise;
@@ -638,60 +705,24 @@ export class Generator {
       const fState = this.fState;
       fState.breathinessLin     = dbToLin(fParms.breathinessDb);
       fState.gainLin            = dbToLin(fParms.gainDb);
-      if (!fParms.tiltDb) {
-         this.tiltFilter.setPassthrough(); }
-       else {
-         this.tiltFilter.set(3000, dbToLin(-fParms.tiltDb)); }
+      setTiltFilter(this.tiltFilter, fParms.tiltDb);
 
       // Adjust cascade branch:
       fState.cascadeVoicingLin = dbToLin(fParms.cascadeVoicingDb);
       fState.cascadeAspirationLin = dbToLin(fParms.cascadeAspirationDb);
-      if (fParms.nasalFormantFreq && fParms.nasalFormantBw) {
-         this.nasalFormantCasc.set(fParms.nasalFormantFreq, fParms.nasalFormantBw); }
-       else {
-         this.nasalFormantCasc.setPassthrough(); }
-      if (fParms.nasalAntiformantFreq && fParms.nasalAntiformantBw) {
-         this.nasalAntiformantCasc.set(fParms.nasalAntiformantFreq, fParms.nasalAntiformantBw); }
-       else {
-         this.nasalAntiformantCasc.setPassthrough(); }
+      setNasalFormantCasc(this.nasalFormantCasc, fParms);
+      setNasalAntiformantCasc(this.nasalAntiformantCasc, fParms);
       for (let i = 0; i < maxOralFormants; i++) {
-         const f =  (i < fParms.oralFormantFreq.length) ? fParms.oralFormantFreq[i] : NaN;
-         const bw = (i < fParms.oralFormantBw.length)   ? fParms.oralFormantBw[i]   : NaN;
-         if (f && bw) {
-            this.oralFormantCasc[i].set(f, bw); }
-          else {
-            this.oralFormantCasc[i].setPassthrough(); }}
+         setOralFormantCasc(this.oralFormantCasc[i], fParms, i); }
 
       // Adjust parallel branch:
       fState.parallelVoicingLin = dbToLin(fParms.parallelVoicingDb);
       fState.parallelAspirationLin = dbToLin(fParms.parallelAspirationDb);
       fState.fricationLin = dbToLin(fParms.fricationDb);
       fState.parallelBypassLin = dbToLin(fParms.parallelBypassDb);
-      // Klatt used the following linear factors to adjust the levels of the parallel formant
-      // resonators so that they have a similar effect as the cascade versions:
-      //   F1: 0.4, F2: 0.15, F3: 0.06, F4: 0.04, F5: 0.022, F6: 0.03, Nasal: 0.6
-      // We are not doing this here, because then the output of the parallel branch would no longer
-      // match the specified formant levels. Instead, we use the specified value as the peak gain
-      // instead of the DC gain.
-      if (fParms.nasalFormantFreq && fParms.nasalFormantBw && dbToLin(fParms.nasalFormantDb)) {
-         this.nasalFormantPar.set(fParms.nasalFormantFreq, fParms.nasalFormantBw);
-         this.nasalFormantPar.adjustPeakGain(dbToLin(fParms.nasalFormantDb)); }
-       else {
-         this.nasalFormantPar.setMute(); }
+      setNasalFormantPar(this.nasalFormantPar, fParms);
       for (let i = 0; i < maxOralFormants; i++) {
-         const formant = i + 1;
-         const f =  (i < fParms.oralFormantFreq.length) ? fParms.oralFormantFreq[i] : NaN;
-         const bw = (i < fParms.oralFormantBw.length)   ? fParms.oralFormantBw[i]   : NaN;
-         const db = (i < fParms.oralFormantDb.length)   ? fParms.oralFormantDb[i]   : NaN;
-         const peakGain = dbToLin(db);
-         if (f && bw && peakGain) {
-            this.oralFormantPar[i].set(f, bw);
-            const w = 2 * Math.PI * f / mParms.sampleRate;
-            const diffGain = Math.sqrt(2 - 2 * Math.cos(w));                     // gain of differencing filter
-            const filterGain = (formant >= 2) ? peakGain / diffGain : peakGain;  // compensate differencing filter for F2 to F6
-            this.oralFormantPar[i].adjustPeakGain(filterGain); }
-          else {
-            this.oralFormantPar[i].setMute(); }}}
+         setOralFormantPar(this.oralFormantPar[i], mParms, fParms, i); }}
 
    private initGlottalSource() {
       switch (this.mParms.glottalSourceType) {
@@ -703,6 +734,9 @@ export class Generator {
             this.naturalGSource = new NaturalGlottalSource();
             this.glottalSource = () => this.naturalGSource.getNext();
             break; }
+         case GlottalSourceType.noise: {
+            this.glottalSource = getWhiteNoise;
+            break; }
          default: {
             throw new Error("Undefined glottal source type."); }}}
 
@@ -713,11 +747,65 @@ export class Generator {
             break; }
          case GlottalSourceType.natural: {
             this.naturalGSource.startPeriod(this.pState.openPhaseLength);
-            break; }
-         default: {
-            throw new Error("Undefined glottal source type."); }}}
+            break; }}}
 
    }
+
+function setTiltFilter (tiltFilter: LpFilter1, tiltDb: number) {
+   if (!tiltDb) {
+      tiltFilter.setPassthrough(); }
+    else {
+      tiltFilter.set(3000, dbToLin(-tiltDb)); }}
+
+function setNasalFormantCasc (nasalFormantCasc: Resonator, fParms: FrameParms) {
+   if (fParms.nasalFormantFreq && fParms.nasalFormantBw) {
+      nasalFormantCasc.set(fParms.nasalFormantFreq, fParms.nasalFormantBw); }
+    else {
+      nasalFormantCasc.setPassthrough(); }}
+
+function setNasalAntiformantCasc (nasalAntiformantCasc: AntiResonator, fParms: FrameParms) {
+   if (fParms.nasalAntiformantFreq && fParms.nasalAntiformantBw) {
+      nasalAntiformantCasc.set(fParms.nasalAntiformantFreq, fParms.nasalAntiformantBw); }
+    else {
+      nasalAntiformantCasc.setPassthrough(); }}
+
+function setOralFormantCasc (oralFormantCasc: Resonator, fParms: FrameParms, i: number) {
+   const f =  (i < fParms.oralFormantFreq.length) ? fParms.oralFormantFreq[i] : NaN;
+   const bw = (i < fParms.oralFormantBw.length)   ? fParms.oralFormantBw[i]   : NaN;
+   if (f && bw) {
+      oralFormantCasc.set(f, bw); }
+    else {
+      oralFormantCasc.setPassthrough(); }}
+
+function setNasalFormantPar (nasalFormantPar: Resonator, fParms: FrameParms) {
+   if (fParms.nasalFormantFreq && fParms.nasalFormantBw && dbToLin(fParms.nasalFormantDb)) {
+      nasalFormantPar.set(fParms.nasalFormantFreq, fParms.nasalFormantBw);
+      nasalFormantPar.adjustPeakGain(dbToLin(fParms.nasalFormantDb)); }
+    else {
+      nasalFormantPar.setMute(); }}
+
+function setOralFormantPar (oralFormantPar: Resonator, mParms: MainParms, fParms: FrameParms, i: number) {
+   const formant = i + 1;
+   const f =  (i < fParms.oralFormantFreq.length) ? fParms.oralFormantFreq[i] : NaN;
+   const bw = (i < fParms.oralFormantBw.length)   ? fParms.oralFormantBw[i]   : NaN;
+   const db = (i < fParms.oralFormantDb.length)   ? fParms.oralFormantDb[i]   : NaN;
+   const peakGain = dbToLin(db);
+      // Klatt used the following linear factors to adjust the levels of the parallel formant
+      // resonators so that they have a similar effect as the cascade versions:
+      //   F1: 0.4, F2: 0.15, F3: 0.06, F4: 0.04, F5: 0.022, F6: 0.03, Nasal: 0.6
+      // We are not doing this here, because then the output of the parallel branch would no longer
+      // match the specified formant levels. Instead, we use the specified dB value to set the peak gain
+      // instead of taking it as the DC gain.
+   if (f && bw && peakGain) {
+      oralFormantPar.set(f, bw);
+      const w = 2 * Math.PI * f / mParms.sampleRate;
+      const diffGain = Math.sqrt(2 - 2 * Math.cos(w));                     // gain of differencing filter
+      const filterGain = (formant >= 2) ? peakGain / diffGain : peakGain;  // compensate differencing filter for F2 to F6
+      oralFormantPar.adjustPeakGain(filterGain); }
+    else {
+      oralFormantPar.setMute(); }}
+
+//------------------------------------------------------------------------------
 
 // Generates a sound that consists of multiple frames.
 export function generateSound (mParms: MainParms, fParmsA: FrameParms[]) : Float64Array {
@@ -733,6 +821,147 @@ export function generateSound (mParms: MainParms, fParmsA: FrameParms[]) : Float
       generator.generateFrame(fParms, frameBuf);
       outBufPos += frameLen; }
    return outBuf; }
+
+//--- Transfer function --------------------------------------------------------
+
+// Returns the polynomial coefficients of the overall filter transfer function in the z-plane.
+// The returned array contains the top and bottom coefficients of the rational fraction, ordered in ascending powers.
+export function getVocalTractTransferFunctionCoefficients (mParms: MainParms, fParms: FrameParms) : number[][] {
+   let voice = [[1], [1]];                                 // glottal source
+   //
+   const tiltFilter = new LpFilter1(mParms.sampleRate);
+   setTiltFilter(tiltFilter, fParms.tiltDb);
+   const tiltTrans = tiltFilter.getTransferFunctionCoefficients();
+   voice = multiplyFractions(voice, tiltTrans);
+   //
+   const cascadeTrans  = fParms.cascadeEnabled  ? getCascadeBranchTransferFunctionCoefficients(mParms, fParms)  : [[0], [1]];
+   const parallelTrans = fParms.parallelEnabled ? getParallelBranchTransferFunctionCoefficients(mParms, fParms) : [[0], [1]];
+   const cascadeOut  = multiplyFractions(voice, cascadeTrans);
+   const parallelOut = multiplyFractions(voice, parallelTrans);
+   let out = addFractions(cascadeOut, parallelOut);
+   //
+   const outputLpFilter = new Resonator(mParms.sampleRate);
+   outputLpFilter.set(0, mParms.sampleRate / 2);
+   const outputLpTrans = outputLpFilter.getTransferFunctionCoefficients();
+   out = multiplyFractions(out, outputLpTrans);
+   //
+   const gainLin = dbToLin(fParms.gainDb);
+   out = multiplyFractions(out, [[gainLin], [1]]);
+   //
+   return out; }
+
+function getCascadeBranchTransferFunctionCoefficients (mParms: MainParms, fParms: FrameParms) : number[][] {
+   const cascadeVoicingLin = dbToLin(fParms.cascadeVoicingDb);
+   let v = [[cascadeVoicingLin], [1]];
+   //
+   const nasalAntiformantCasc = new AntiResonator(mParms.sampleRate);
+   setNasalAntiformantCasc(nasalAntiformantCasc, fParms);
+   const nasalAntiformantTrans = nasalAntiformantCasc.getTransferFunctionCoefficients();
+   v = multiplyFractions(v, nasalAntiformantTrans);
+   //
+   const nasalFormantCasc = new Resonator(mParms.sampleRate);
+   setNasalFormantCasc(nasalFormantCasc, fParms);
+   const nasalFormantTrans = nasalFormantCasc.getTransferFunctionCoefficients();
+   v = multiplyFractions(v, nasalFormantTrans);
+   //
+   for (let i = 0; i < maxOralFormants; i++) {
+      const oralFormantCasc = new Resonator(mParms.sampleRate);
+      setOralFormantCasc(oralFormantCasc, fParms, i);
+      const oralFormantCascTrans = oralFormantCasc.getTransferFunctionCoefficients();
+      v = multiplyFractions(v, oralFormantCascTrans); }
+   return v; }
+
+function getParallelBranchTransferFunctionCoefficients (mParms: MainParms, fParms: FrameParms) : number[][] {
+   const parallelVoicingLin = dbToLin(fParms.parallelVoicingDb);
+   const source = [[parallelVoicingLin], [1]];
+   //
+   const differencingFilterPar = new DifferencingFilter();
+   const differencingFilterTrans = differencingFilterPar.getTransferFunctionCoefficients();
+   const source2 = multiplyFractions(source, differencingFilterTrans);
+   //
+   let v = [[0], [1]];
+   //
+   const nasalFormantPar = new Resonator(mParms.sampleRate);
+   setNasalFormantPar(nasalFormantPar, fParms);
+   const nasalFormantTrans = nasalFormantPar.getTransferFunctionCoefficients();
+   v = addFractions(v, multiplyFractions(source, nasalFormantTrans));
+   //
+   for (let i = 0; i < maxOralFormants; i++) {
+      const oralFormantPar = new Resonator(mParms.sampleRate);
+      setOralFormantPar(oralFormantPar, mParms, fParms, i);
+      const oralFormantTrans = oralFormantPar.getTransferFunctionCoefficients();
+      const formantIn = (i == 0) ? source : source2;                 // F1 is applied to source, F2 to F6 are applied to difference
+      const formantOut = multiplyFractions(formantIn, oralFormantTrans);
+      const alternatingSign = (i % 2 == 0) ? 1 : -1;
+      const v2 = multiplyFractions(formantOut, [[alternatingSign], [1]]);
+      v = addFractions(v, v2); }
+   //
+   const parallelBypassLin = dbToLin(fParms.parallelBypassDb);
+   const parallelBypass = multiplyFractions(source2, [[parallelBypassLin], [1]]); // bypass is applied to source difference
+   v = addFractions(v, parallelBypass);
+   //
+   return v; }
+
+//--- Polynomial arithmetic ----------------------------------------------------
+
+// The following routines are copied from the PolyReal module of the dsp-collection package.
+
+// Adds two real polynomials.
+function addPoly (a1: number[], a2: number[]) : number[] {
+   const n1 = a1.length - 1;
+   const n2 = a2.length - 1;
+   const n3 = Math.max(n1, n2);
+   const a3 = new Array<number>(n3 + 1);
+   for (let i = 0; i <= n3; i++) {
+      const v1 = (i <= n1) ? a1[i] : 0;
+      const v2 = (i <= n2) ? a2[i] : 0;
+      a3[i] = v1 + v2; }
+   return a3; }
+
+// Multiplies two real polynomials.
+function multiplyPoly (a1: number[], a2: number[]) : number[] {
+   if (a1.length == 0 || a2.length == 0) {
+      throw new Error("Zero length arrays."); }
+   if (a1.length == 1 && a1[0] == 0 || a2.length == 1 && a2[0] == 0) {
+      return [0]; }
+   const n1 = a1.length - 1;
+   const n2 = a2.length - 1;
+   const n3 = n1 + n2;
+   const a3 = new Array<number>(n3 + 1);
+   for (let i = 0; i <= n3; i++) {
+      let t = 0;
+      const p1 = Math.max(0, i - n2);
+      const p2 = Math.min(n1, i);
+      for (let j = p1; j <= p2; j++) {
+         t += a1[j] * a2[i - j]; }
+      a3[i] = t; }
+   return a3; }
+
+// Returns `true` if two polynomials are equal.
+export function equalsPoly (a1: number[], a2: number[], eps = 0) : boolean {
+   const n1 = a1.length - 1;
+   const n2 = a2.length - 1;
+   const n = Math.max(n1, n2);
+   for (let i = 0; i <= n; i++) {
+      const v1 = (i <= n1) ? a1[i] : 0;
+      const v2 = (i <= n2) ? a2[i] : 0;
+      if (Math.abs(v1 - v2) > eps) {
+         return false; }}
+   return true; }
+
+// Adds two rational algebraic fractions.
+function addFractions (f1: number[][], f2: number[][]) : number[][] {
+   if (equalsPoly(f1[1], f2[1])) {                         // if same denominator
+      return [addPoly(f1[0], f2[0]), f1[1].slice()]; }     // add numerators
+   const top = addPoly(multiplyPoly(f1[0], f2[1]), multiplyPoly(f2[0], f1[1]));
+   const bottom = multiplyPoly(f1[1], f2[1]);
+   return [top, bottom]; }
+
+// Multiplies two rational algebraic fractions.
+function multiplyFractions (f1: number[][], f2: number[][]) : number[][] {
+   const top    = multiplyPoly(f1[0], f2[0]);
+   const bottom = multiplyPoly(f1[1], f2[1]);
+   return [top, bottom]; }
 
 // For debugging only:
 // declare var console: any;
