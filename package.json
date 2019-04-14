@@ -1,6 +1,6 @@
 {
    "name": "klatt-syn",
-   "version": "1.0.2",
+   "version": "1.0.3",
    "description": "Klatt formant synthesizer",
    "types": "dist/Klatt.d.ts",
    "module": "dist/Klatt.js",
@@ -26,5 +26,8 @@
    },
    "files": [
       "dist/*"
-   ]
+   ],
+   "dependencies": {
+      "dsp-collection": "^0.2.2"
+   }
 }

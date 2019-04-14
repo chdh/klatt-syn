@@ -1,3 +1,5 @@
+import * as PolyReal from "dsp-collection/math/PolyReal";
+
 //--- Filters ------------------------------------------------------------------
 
 // A first-order IIR LP filter.
@@ -824,144 +826,81 @@ export function generateSound (mParms: MainParms, fParmsA: FrameParms[]) : Float
 
 //--- Transfer function --------------------------------------------------------
 
+const eps = 1E-10;
+
 // Returns the polynomial coefficients of the overall filter transfer function in the z-plane.
 // The returned array contains the top and bottom coefficients of the rational fraction, ordered in ascending powers.
-export function getVocalTractTransferFunctionCoefficients (mParms: MainParms, fParms: FrameParms) : number[][] {
-   let voice = [[1], [1]];                                 // glottal source
+export function getVocalTractTransferFunctionCoefficients (mParms: MainParms, fParms: FrameParms) : Float64Array[] {
+   let voice: ArrayLike<number>[] = [[1], [1]];                      // glottal source
    //
    const tiltFilter = new LpFilter1(mParms.sampleRate);
    setTiltFilter(tiltFilter, fParms.tiltDb);
    const tiltTrans = tiltFilter.getTransferFunctionCoefficients();
-   voice = multiplyFractions(voice, tiltTrans);
+   voice = PolyReal.multiplyFractions(voice, tiltTrans, eps);
    //
    const cascadeTrans  = fParms.cascadeEnabled  ? getCascadeBranchTransferFunctionCoefficients(mParms, fParms)  : [[0], [1]];
    const parallelTrans = fParms.parallelEnabled ? getParallelBranchTransferFunctionCoefficients(mParms, fParms) : [[0], [1]];
-   const cascadeOut  = multiplyFractions(voice, cascadeTrans);
-   const parallelOut = multiplyFractions(voice, parallelTrans);
-   let out = addFractions(cascadeOut, parallelOut);
+   const branchesTrans = PolyReal.addFractions(cascadeTrans, parallelTrans, eps);
+   let out = PolyReal.multiplyFractions(voice, branchesTrans, eps);
    //
    const outputLpFilter = new Resonator(mParms.sampleRate);
    outputLpFilter.set(0, mParms.sampleRate / 2);
    const outputLpTrans = outputLpFilter.getTransferFunctionCoefficients();
-   out = multiplyFractions(out, outputLpTrans);
+   out = PolyReal.multiplyFractions(out, outputLpTrans, eps);
    //
    const gainLin = dbToLin(fParms.gainDb);
-   out = multiplyFractions(out, [[gainLin], [1]]);
+   out = PolyReal.multiplyFractions(out, [[gainLin], [1]], eps);
    //
    return out; }
 
-function getCascadeBranchTransferFunctionCoefficients (mParms: MainParms, fParms: FrameParms) : number[][] {
+function getCascadeBranchTransferFunctionCoefficients (mParms: MainParms, fParms: FrameParms) : ArrayLike<number>[] {
    const cascadeVoicingLin = dbToLin(fParms.cascadeVoicingDb);
-   let v = [[cascadeVoicingLin], [1]];
+   let v: ArrayLike<number>[] = [[cascadeVoicingLin], [1]];
    //
    const nasalAntiformantCasc = new AntiResonator(mParms.sampleRate);
    setNasalAntiformantCasc(nasalAntiformantCasc, fParms);
    const nasalAntiformantTrans = nasalAntiformantCasc.getTransferFunctionCoefficients();
-   v = multiplyFractions(v, nasalAntiformantTrans);
+   v = PolyReal.multiplyFractions(v, nasalAntiformantTrans, eps);
    //
    const nasalFormantCasc = new Resonator(mParms.sampleRate);
    setNasalFormantCasc(nasalFormantCasc, fParms);
    const nasalFormantTrans = nasalFormantCasc.getTransferFunctionCoefficients();
-   v = multiplyFractions(v, nasalFormantTrans);
+   v = PolyReal.multiplyFractions(v, nasalFormantTrans, eps);
    //
    for (let i = 0; i < maxOralFormants; i++) {
       const oralFormantCasc = new Resonator(mParms.sampleRate);
       setOralFormantCasc(oralFormantCasc, fParms, i);
       const oralFormantCascTrans = oralFormantCasc.getTransferFunctionCoefficients();
-      v = multiplyFractions(v, oralFormantCascTrans); }
+      v = PolyReal.multiplyFractions(v, oralFormantCascTrans, eps); }
    return v; }
 
-function getParallelBranchTransferFunctionCoefficients (mParms: MainParms, fParms: FrameParms) : number[][] {
+function getParallelBranchTransferFunctionCoefficients (mParms: MainParms, fParms: FrameParms) : ArrayLike<number>[] {
    const parallelVoicingLin = dbToLin(fParms.parallelVoicingDb);
    const source = [[parallelVoicingLin], [1]];
    //
    const differencingFilterPar = new DifferencingFilter();
    const differencingFilterTrans = differencingFilterPar.getTransferFunctionCoefficients();
-   const source2 = multiplyFractions(source, differencingFilterTrans);
+   const source2 = PolyReal.multiplyFractions(source, differencingFilterTrans, eps);
    //
-   let v = [[0], [1]];
+   let v: ArrayLike<number>[] = [[0], [1]];
    //
    const nasalFormantPar = new Resonator(mParms.sampleRate);
    setNasalFormantPar(nasalFormantPar, fParms);
    const nasalFormantTrans = nasalFormantPar.getTransferFunctionCoefficients();
-   v = addFractions(v, multiplyFractions(source, nasalFormantTrans));
+   v = PolyReal.addFractions(v, PolyReal.multiplyFractions(source, nasalFormantTrans), eps);
    //
    for (let i = 0; i < maxOralFormants; i++) {
       const oralFormantPar = new Resonator(mParms.sampleRate);
       setOralFormantPar(oralFormantPar, mParms, fParms, i);
       const oralFormantTrans = oralFormantPar.getTransferFunctionCoefficients();
       const formantIn = (i == 0) ? source : source2;                 // F1 is applied to source, F2 to F6 are applied to difference
-      const formantOut = multiplyFractions(formantIn, oralFormantTrans);
+      const formantOut = PolyReal.multiplyFractions(formantIn, oralFormantTrans, eps);
       const alternatingSign = (i % 2 == 0) ? 1 : -1;
-      const v2 = multiplyFractions(formantOut, [[alternatingSign], [1]]);
-      v = addFractions(v, v2); }
+      const v2 = PolyReal.multiplyFractions(formantOut, [[alternatingSign], [1]], eps);
+      v = PolyReal.addFractions(v, v2, eps); }
    //
    const parallelBypassLin = dbToLin(fParms.parallelBypassDb);
-   const parallelBypass = multiplyFractions(source2, [[parallelBypassLin], [1]]); // bypass is applied to source difference
-   v = addFractions(v, parallelBypass);
+   const parallelBypass = PolyReal.multiplyFractions(source2, [[parallelBypassLin], [1]], eps); // bypass is applied to source difference
+   v = PolyReal.addFractions(v, parallelBypass, eps);
    //
    return v; }
-
-//--- Polynomial arithmetic ----------------------------------------------------
-
-// The following routines are copied from the PolyReal module of the dsp-collection package.
-
-// Adds two real polynomials.
-function addPoly (a1: number[], a2: number[]) : number[] {
-   const n1 = a1.length - 1;
-   const n2 = a2.length - 1;
-   const n3 = Math.max(n1, n2);
-   const a3 = new Array<number>(n3 + 1);
-   for (let i = 0; i <= n3; i++) {
-      const v1 = (i <= n1) ? a1[i] : 0;
-      const v2 = (i <= n2) ? a2[i] : 0;
-      a3[i] = v1 + v2; }
-   return a3; }
-
-// Multiplies two real polynomials.
-function multiplyPoly (a1: number[], a2: number[]) : number[] {
-   if (a1.length == 0 || a2.length == 0) {
-      throw new Error("Zero length arrays."); }
-   if (a1.length == 1 && a1[0] == 0 || a2.length == 1 && a2[0] == 0) {
-      return [0]; }
-   const n1 = a1.length - 1;
-   const n2 = a2.length - 1;
-   const n3 = n1 + n2;
-   const a3 = new Array<number>(n3 + 1);
-   for (let i = 0; i <= n3; i++) {
-      let t = 0;
-      const p1 = Math.max(0, i - n2);
-      const p2 = Math.min(n1, i);
-      for (let j = p1; j <= p2; j++) {
-         t += a1[j] * a2[i - j]; }
-      a3[i] = t; }
-   return a3; }
-
-// Returns `true` if two polynomials are equal.
-export function equalsPoly (a1: number[], a2: number[], eps = 0) : boolean {
-   const n1 = a1.length - 1;
-   const n2 = a2.length - 1;
-   const n = Math.max(n1, n2);
-   for (let i = 0; i <= n; i++) {
-      const v1 = (i <= n1) ? a1[i] : 0;
-      const v2 = (i <= n2) ? a2[i] : 0;
-      if (Math.abs(v1 - v2) > eps) {
-         return false; }}
-   return true; }
-
-// Adds two rational algebraic fractions.
-function addFractions (f1: number[][], f2: number[][]) : number[][] {
-   if (equalsPoly(f1[1], f2[1])) {                         // if same denominator
-      return [addPoly(f1[0], f2[0]), f1[1].slice()]; }     // add numerators
-   const top = addPoly(multiplyPoly(f1[0], f2[1]), multiplyPoly(f2[0], f1[1]));
-   const bottom = multiplyPoly(f1[1], f2[1]);
-   return [top, bottom]; }
-
-// Multiplies two rational algebraic fractions.
-function multiplyFractions (f1: number[][], f2: number[][]) : number[][] {
-   const top    = multiplyPoly(f1[0], f2[0]);
-   const bottom = multiplyPoly(f1[1], f2[1]);
-   return [top, bottom]; }
-
-// For debugging only:
-// declare var console: any;
