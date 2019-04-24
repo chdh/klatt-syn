@@ -500,7 +500,8 @@ export interface FrameParms {
    openPhaseRatio:                     number;                       // relative length of the open phase of the glottis, 0 .. 1, typically 0.7
    breathinessDb:                      number;                       // breathiness in voicing (turbulence) in dB, positive to amplify or negative to attenuate
    tiltDb:                             number;                       // spectral tilt for glottal source in dB. Attenuation at 3 kHz in dB. 0 = no tilt.
-   gainDb:                             number;                       // overall gain (output gain) in dB, positive to amplify or negative to attenuate
+   gainDb:                             number;                       // overall gain (output gain) in dB, positive to amplify, negative to attenuate, NaN for automatic gain control (AGC)
+   agcRmsLevel:                        number;                       // RMS level for automatic gain control (AGC), only relevant when gainDb is NaN
    nasalFormantFreq:                   number;                       // nasal formant frequency in Hz, or NaN
    nasalFormantBw:                     number;                       // nasal formant bandwidth in Hz, or NaN
    oralFormantFreq:                    number[];                     // oral format frequencies in Hz, or NaN
@@ -623,7 +624,9 @@ export class Generator {
             this.startNewPeriod(); }
          outBuf[outPos] = this.computeNextOutputSignalSample();
          this.pState.positionInPeriod++;
-         this.absPosition++; }}
+         this.absPosition++; }
+      if (isNaN(fParms.gainDb)) {                                    // automatic gain control (AGC)
+         adjustSignalGain(outBuf, fParms.agcRmsLevel); }}
 
    private computeNextOutputSignalSample() : number {
       const fParms = this.fParms;
@@ -706,7 +709,7 @@ export class Generator {
       const fParms = this.fParms;
       const fState = this.fState;
       fState.breathinessLin     = dbToLin(fParms.breathinessDb);
-      fState.gainLin            = dbToLin(fParms.gainDb);
+      fState.gainLin            = dbToLin(fParms.gainDb || 0);
       setTiltFilter(this.tiltFilter, fParms.tiltDb);
 
       // Adjust cascade branch:
@@ -807,6 +810,24 @@ function setOralFormantPar (oralFormantPar: Resonator, mParms: MainParms, fParms
     else {
       oralFormantPar.setMute(); }}
 
+function adjustSignalGain (buf: Float64Array, targetRms: number) {
+   const n = buf.length;
+   if (!n) {
+      return; }
+   const rms = computeRms(buf);
+   if (!rms) {
+      return; }
+   const r = targetRms / rms;
+   for (let i = 0; i < n; i++) {
+      buf[i] *= r; }}
+
+function computeRms (buf: Float64Array) : number {
+   const n = buf.length;
+   let acc = 0;
+   for (let i = 0; i < n; i++) {
+      acc += buf[i] ** 2; }
+   return Math.sqrt(acc / n); }
+
 //------------------------------------------------------------------------------
 
 // Generates a sound that consists of multiple frames.
@@ -848,7 +869,7 @@ export function getVocalTractTransferFunctionCoefficients (mParms: MainParms, fP
    const outputLpTrans = outputLpFilter.getTransferFunctionCoefficients();
    out = PolyReal.multiplyFractions(out, outputLpTrans, eps);
    //
-   const gainLin = dbToLin(fParms.gainDb);
+   const gainLin = dbToLin(fParms.gainDb || 0);
    out = PolyReal.multiplyFractions(out, [[gainLin], [1]], eps);
    //
    return out; }
