@@ -1,5 +1,6 @@
 {
    "compilerOptions": {
+      "allowUnreachableCode": false,
       "alwaysStrict": true,
       "declaration": true,
       "lib": ["ES6"],
