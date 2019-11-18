@@ -25,5 +25,4 @@ and is based on the following documents and source code:
 
 **Online demo**: [www.source-code.biz/klattSyn](http://www.source-code.biz/klattSyn)<br>
 **NPM package**: [klatt-syn](https://www.npmjs.com/package/klatt-syn)<br>
-**GUI application**: [github.com/chdh/klatt-syn-app](https://github.com/chdh/klatt-syn-app)<br>
-**Online demo**: [www.source-code.biz/klattSyn](http://www.source-code.biz/klattSyn)
+**GUI application**: [github.com/chdh/klatt-syn-app](https://github.com/chdh/klatt-syn-app)
