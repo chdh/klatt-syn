@@ -48,7 +48,7 @@ class LpFilter1 {
 
    // @param sampleRate
    //    Sample rate in Hz.
-   constructor (sampleRate: number) {
+   public constructor (sampleRate: number) {
       this.sampleRate = sampleRate;
       this.y1 = 0;
       this.passthrough = true;
@@ -147,7 +147,7 @@ class Resonator {
 
    // @param sampleRate
    //    Sample rate in Hz.
-   constructor (sampleRate: number) {
+   public constructor (sampleRate: number) {
       this.sampleRate = sampleRate;
       this.y1 = 0;
       this.y2 = 0;
@@ -243,7 +243,7 @@ class AntiResonator {
 
    // @param sampleRate
    //    Sample rate in Hz.
-   constructor (sampleRate: number) {
+   public constructor (sampleRate: number) {
       this.sampleRate = sampleRate;
       this.x1 = 0;
       this.x2 = 0;
@@ -332,7 +332,7 @@ class DifferencingFilter {
 
    private x1:               number;                       // x[n-1], last input value
 
-   constructor() {
+   public constructor() {
       this.x1 = 0; }
 
    // Returns the polynomial coefficients of the filter transfer function in the z-plane.
@@ -361,7 +361,7 @@ class LpNoiseSource {
 
    private lpFilter:         LpFilter1;
 
-   constructor (sampleRate: number) {
+   public constructor (sampleRate: number) {
       // The original program logic used a first order LP filter with a filter coefficient
       // of b=0.75 and a sample rate of 10 kHz.
       const oldB = 0.75;
@@ -388,7 +388,7 @@ class ImpulsiveGlottalSource {
    private resonator:        Resonator | undefined;        // resonator used as an LP filter
    private positionInPeriod: number;                       // current sample position within F0 period
 
-   constructor (sampleRate: number) {
+   public constructor (sampleRate: number) {
       this.sampleRate = sampleRate;
       this.resonator = undefined; }
 
@@ -427,7 +427,7 @@ class NaturalGlottalSource {
    private openPhaseLength:  number;                       // open glottis phase length in samples
    private positionInPeriod: number;                       // current sample position within F0 period
 
-   constructor() {
+   public constructor() {
       this.startPeriod(0); }
 
    // @param openPhaseLength
@@ -584,7 +584,7 @@ export class Generator {
    private oralFormantPar:             Resonator[];                  // oral formant filters for parallel branch
    private differencingFilterPar:      DifferencingFilter;           // differencing filter for the parallel branch
 
-   constructor (mParms: MainParms) {
+   public constructor (mParms: MainParms) {
       this.mParms = mParms;
       this.fState = <FrameState>{};
       this.absPosition = 0;
@@ -752,7 +752,9 @@ export class Generator {
             break; }
          case GlottalSourceType.natural: {
             this.naturalGSource.startPeriod(this.pState.openPhaseLength);
-            break; }}}
+            break; }
+         default: {
+            /* nop */ }}}
 
    }
 
