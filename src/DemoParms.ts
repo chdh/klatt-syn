@@ -5,7 +5,7 @@ import {FrameParms} from "./Klatt.js";
 // These parameters are used as default values in the KlattSynApp web application.
 export const demoFrameParms: FrameParms = {
    duration:                 1,
-   f0:                       247,    // 220,
+   f0:                       247,
    flutterLevel:             0.25,
    openPhaseRatio:           0.7,
    breathinessDb:            -25,

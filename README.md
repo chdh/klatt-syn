@@ -53,7 +53,7 @@ The following table can be used to pragmatically map old values to new values fo
 | 27    | -30  |
 | 0     | -99  |
 
-In addition, most amplitude parameter values where internally adjusted in the old source code.
+In addition, most amplitude parameter values were internally adjusted in the old source code.
 To find the corresponding new value, An adjustment value must be subtracted.
 
 | Old symbol | Linear factor | Adjustment dB | Parameter |
