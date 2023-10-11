@@ -22,6 +22,9 @@ const rules = {
    "no-octal-escape": "error",
    "no-param-reassign": "error",
    "no-promise-executor-return": "warn",
+   "no-restricted-syntax": ["error", {
+      selector: "AssignmentExpression[parent.type!='ExpressionStatement']",
+      message: "Do not nest assignments" }],
    "no-sequences": "error",
    "no-template-curly-in-string": "error",
    "no-useless-backreference": "error",
