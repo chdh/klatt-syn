@@ -1,6 +1,6 @@
 {
    "name": "klatt-syn",
-   "version": "1.0.6",
+   "version": "1.0.7",
    "description": "Klatt formant synthesizer",
    "types": "dist/Klatt.d.ts",
    "main": "dist/Klatt.js",
@@ -14,7 +14,10 @@
    ],
    "license": "MIT",
    "homepage": "http://www.source-code.biz/klattSyn",
-   "repository": "github:chdh/klatt-syn",
+   "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chdh/klatt-syn.git"
+   },
    "contributors": [
       {
          "name": "Christian d'Heureuse",

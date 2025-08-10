@@ -1,6 +1,6 @@
 // Klatt synthesis parameters for demo and tests.
 
-import {FrameParms} from "./Klatt.js";
+import {FrameParms} from "./Klatt.ts";
 
 // These parameters are used as default values in the KlattSynApp web application.
 export const demoFrameParms: FrameParms = {

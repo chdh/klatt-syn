@@ -1,5 +1,5 @@
 import * as PolyReal from "dsp-collection/math/PolyReal.js";
-export {demoFrameParms} from "./DemoParms.js";
+export {demoFrameParms} from "./DemoParms.ts";
 
 //--- Filters ------------------------------------------------------------------
 
@@ -820,7 +820,10 @@ function adjustSignalGain (buf: Float64Array, targetRms: number) {
    const rms = computeRms(buf);
    if (!rms) {
       return; }
-   const r = targetRms / rms;
+   let r = targetRms / rms;
+   const maxAbs = findMaxAbsValue(buf);
+   if (maxAbs > 1) {
+      r = Math.min(r, 1 / maxAbs); }
    for (let i = 0; i < n; i++) {
       buf[i] *= r; }}
 
@@ -830,6 +833,13 @@ function computeRms (buf: Float64Array) : number {
    for (let i = 0; i < n; i++) {
       acc += buf[i] ** 2; }
    return Math.sqrt(acc / n); }
+
+function findMaxAbsValue (buf: Float64Array) : number {
+   const n = buf.length;
+   let maxAbs = 0;
+   for (let i = 0; i < n; i++) {
+      maxAbs = Math.max(maxAbs, Math.abs(buf[i])); }
+   return maxAbs; }
 
 //------------------------------------------------------------------------------
 
