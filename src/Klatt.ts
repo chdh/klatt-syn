@@ -822,8 +822,8 @@ function adjustSignalGain (buf: Float64Array, targetRms: number) {
       return; }
    let r = targetRms / rms;
    const maxAbs = findMaxAbsValue(buf);
-   if (maxAbs > 1) {
-      r = Math.min(r, 1 / maxAbs); }
+   if (r * maxAbs >= 1) {                                                      // prevent clipping
+      r = 0.99 / maxAbs; }
    for (let i = 0; i < n; i++) {
       buf[i] *= r; }}
 
