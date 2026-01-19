@@ -1,8 +1,11 @@
 $$BackupControl.txt
 build.bat
 dist
+example.wav
 ext-src
 node_modules
 notes.txt
 package-lock.json
+run.bat
+tempBuild
 todo.txt

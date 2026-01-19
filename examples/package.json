@@ -1,0 +1,11 @@
+{
+   "private": true,
+   "type": "module",
+   "dependencies": {
+      "klatt-syn": "^1.0.7",
+      "wav-file-encoder": "^1.0.2"
+   },
+   "devDependencies": {
+      "@types/node": "^24.9.1"
+   }
+}

@@ -1,4 +1,4 @@
-import * as PolyReal from "dsp-collection/math/PolyReal.js";
+import * as PolyReal from "dsp-collection/math/PolyReal";
 export {demoFrameParms} from "./DemoParms.ts";
 
 //--- Filters ------------------------------------------------------------------

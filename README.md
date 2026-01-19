@@ -28,6 +28,18 @@ and is based on the following documents and source code:
 **NPM package**: [klatt-syn](https://www.npmjs.com/package/klatt-syn)<br>
 **GUI application**: [github.com/chdh/klatt-syn-app](https://github.com/chdh/klatt-syn-app)
 
+## Related online tools
+
+* [HarmSyn - Harmonic synthesizer](https://www.source-code.biz/harmSyn)
+* [NoiseSyn - Spectral noise synthesizer](https://www.source-code.biz/noiseSyn)
+* [SinSyn - Sinusoidal synthesizer](https://www.source-code.biz/sinSyn)
+* [SpecFilt - Spectral filter tool](https://www.source-code.biz/specFilt)
+* [SpecSyn - Spectral Harmonic Synthesizer](https://www.source-code.biz/specSyn)
+
+## Related website
+
+* [zhcorpus.org - Zurich Corpus of Vowel and Voice Quality](https://zhcorpus.org)
+
 ## A note on amplitudes
 
 The meaning of amplitude parameters has changed in this implementation of the Klatt synthesizer.
