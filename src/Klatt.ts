@@ -1,4 +1,5 @@
 import * as PolyReal from "dsp-collection/math/PolyReal";
+import * as DspUtils from "dsp-collection/utils/DspUtils";
 export {demoFrameParms} from "./DemoParms.ts";
 
 //--- Filters ------------------------------------------------------------------
@@ -502,7 +503,7 @@ export interface FrameParms {
    breathinessDb:                      number;                       // breathiness in voicing (turbulence) in dB, positive to amplify or negative to attenuate
    tiltDb:                             number;                       // spectral tilt for glottal source in dB. Attenuation at 3 kHz in dB. 0 = no tilt.
    gainDb:                             number;                       // overall gain (output gain) in dB, positive to amplify, negative to attenuate, NaN for automatic gain control (AGC)
-   agcRmsLevel:                        number;                       // RMS level for automatic gain control (AGC), only relevant when gainDb is NaN
+   agcRmsLevel:                        number;                       // RMS level for automatic gain control (AGC) or 0, only relevant when gainDb is NaN
    nasalFormantFreq:                   number;                       // nasal formant frequency in Hz, or NaN
    nasalFormantBw:                     number;                       // nasal formant bandwidth in Hz, or NaN
    oralFormantFreq:                    number[];                     // oral format frequencies in Hz, or NaN
@@ -626,8 +627,8 @@ export class Generator {
          outBuf[outPos] = this.computeNextOutputSignalSample();
          this.pState.positionInPeriod++;
          this.absPosition++; }
-      if (isNaN(fParms.gainDb)) {                                    // automatic gain control (AGC)
-         adjustSignalGain(outBuf, fParms.agcRmsLevel); }}
+      if (isNaN(fParms.gainDb) && fParms.agcRmsLevel > 0) {          // automatic gain control (AGC)
+         DspUtils.adjustSignalLevel(outBuf, {targetRms: fParms.agcRmsLevel, targetMaxLevel: 0.99}); }}
 
    private computeNextOutputSignalSample() : number {
       const fParms = this.fParms;
@@ -812,34 +813,6 @@ function setOralFormantPar (oralFormantPar: Resonator, mParms: MainParms, fParms
       oralFormantPar.adjustPeakGain(filterGain); }
     else {
       oralFormantPar.setMute(); }}
-
-function adjustSignalGain (buf: Float64Array, targetRms: number) {
-   const n = buf.length;
-   if (!n) {
-      return; }
-   const rms = computeRms(buf);
-   if (!rms) {
-      return; }
-   let r = targetRms / rms;
-   const maxAbs = findMaxAbsValue(buf);
-   if (r * maxAbs >= 1) {                                                      // prevent clipping
-      r = 0.99 / maxAbs; }
-   for (let i = 0; i < n; i++) {
-      buf[i] *= r; }}
-
-function computeRms (buf: Float64Array) : number {
-   const n = buf.length;
-   let acc = 0;
-   for (let i = 0; i < n; i++) {
-      acc += buf[i] ** 2; }
-   return Math.sqrt(acc / n); }
-
-function findMaxAbsValue (buf: Float64Array) : number {
-   const n = buf.length;
-   let maxAbs = 0;
-   for (let i = 0; i < n; i++) {
-      maxAbs = Math.max(maxAbs, Math.abs(buf[i])); }
-   return maxAbs; }
 
 //------------------------------------------------------------------------------
 

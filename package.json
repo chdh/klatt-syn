@@ -12,8 +12,8 @@
    "license": "MIT",
    "homepage": "http://www.source-code.biz/klattSyn",
    "repository": {
-    "type": "git",
-    "url": "git+https://github.com/chdh/klatt-syn.git"
+      "type": "git",
+      "url": "git+https://github.com/chdh/klatt-syn.git"
    },
    "contributors": [
       {
@@ -34,8 +34,10 @@
          "default": "./dist/Klatt.js"
       }
    },
-   "files": ["dist/"],
+   "files": [
+      "dist/"
+   ],
    "dependencies": {
-      "dsp-collection": "^0.2.4"
+      "dsp-collection": "^0.2.9"
    }
 }
